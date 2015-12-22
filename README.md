@@ -117,3 +117,14 @@ $ curl http://0.0.0.0:9292/
 $ curl http://0.0.0.0:9292/users
 {"response":"Work in progress"}
 ```
+
+Premier refactor
+-
+
+On peut observer trois type d'url, donc on a essayer de couper en trois controller.
+On va donc créer le repertoire `controllers` et modifié le `config.ru`.
+
+```shell
+mkdir controllers
+```
+
