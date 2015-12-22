@@ -407,3 +407,5 @@ curl localhost:9292/users
 {"response":"#<User:0x000000016fb728 @id=153, @login=\"itsme\", @password=\"plop1234\", @salt=\"5fd481607a4fd51fe2d21919d7035237\", @api_token=\"292e401c582afc51cd034cdf6a96f0f6\", @session_token=\"dbae864efa5dd1fc69fe81a299165070\", @session_expire_date=2015-12-22 21:46:08 +0100, @created_at=2015-12-22 21:46:08 +0100, @updated_at=2015-12-22 21:46:08 +0100>"}
 ```
 
+Ajout de l'orm Mongo
+-
