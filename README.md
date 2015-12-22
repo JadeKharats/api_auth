@@ -1,14 +1,15 @@
-construire une API micro service auth avec sinatra et rethinkdb
+Construire une API micro service auth avec sinatra et rethinkdb
+==
 
 Identifions les besoins
-==
+-
 
-Nous avons besoin d'identifier notre appelant ou consommateur.
-Ce consommateur a besoin de gérer les utilisateurs de notre API.
-Ce consommateur a besoin de stocker des données propres à son usage
+* Nous avons besoin d'identifier notre appelant ou consommateur.
+* Ce consommateur a besoin de gérer les utilisateurs de notre API.
+* Ce consommateur a besoin de stocker des données propres à son usage
 
 Modele
-==
+-
 
 on peut considérer que les consommateurs et les utilisateurs sont le même objet avec des droits différents.
 
@@ -29,7 +30,7 @@ USERS
 Si on considère que nous allons avons besoin de laissé le schema libre d'être modifié (pour répondre à l'un des besoins), le stockage se fera en NoSQL. ici, ce sera RethinkDB
 
 Les urls
-==
+-
 
 | Verbe  | Urls           | Données                                     | Conditions       | Retour                                     |
 | ------ | -------------- | ------------------------------------------- | ---------------- | ------------------------------------------ |
