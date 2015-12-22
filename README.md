@@ -231,7 +231,6 @@ end
 ```ruby
 # config.ru
 require 'sinatra'
-require './app.rb'
 
 Dir.glob('./{controllers}/*.rb').each { |file| require file }
 
@@ -261,4 +260,72 @@ devient
   get '/:id', &users_show
   put '/:id', &users_update
   delete '/:id', &users_delete
+```
+
+Deuxieme refactor
+-
+
+On va factoriser dans l'ApplicationController ce qui peut l'être et en faire hérité les autres controllers.
+
+On ne change pas l'Application controller.
+En revanche, les autres sont modifiés comme suit :
+
+```ruby
+# user_controller.rb
+class UserController < ApplicationController
+
+  users_list =  users_create =  users_show = users_update = users_delete = lambda do
+    json :response => 'Work in progress'
+  end
+
+  get '/', &users_list
+  post '/', &users_create
+  get '/:id', &users_show
+  put '/:id', &users_update
+  delete '/:id', &users_delete
+
+end
+```
+
+```ruby
+# auth_controller.rb
+class AuthController < ApplicationController
+
+  session_create = session_delete  = lambda do
+    json :response => 'Work in progress'
+  end
+
+  post '/', &session_create
+  delete '/', &session_delete
+
+end
+```
+
+```ruby
+# token_controller.rb
+class TokenController < ApplicationController
+
+  token_show = lambda do
+    json :response => 'Work in progress'
+  end
+
+  post '/', &token_show
+
+end
+```
+
+Pour que tout celà fonctionne, il faut s'assuser que ruby charge l'ApplicationController avant les autres.
+
+```ruby
+# config.ru
+require 'sinatra'
+
+require_relative 'controllers/application_controller'
+
+Dir.glob('./{controllers}/*.rb').each { |file| require file }
+
+map('/users') {run UserController}
+map('/auth') {run AuthController}
+map('/token') {run TokenController}
+map('/') {run ApplicationController}
 ```

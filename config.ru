@@ -1,5 +1,6 @@
 require 'sinatra'
-require './app.rb'
+
+require_relative 'controllers/application_controller'
 
 Dir.glob('./{controllers}/*.rb').each { |file| require file }
 
