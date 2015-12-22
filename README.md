@@ -24,7 +24,7 @@ Si on considère que nous allons avons besoin de laissé le schema libre d'être
 * Les urls
 
 | Verbe  | Urls           | Données                                     | Conditions       | Retour                                     |
-| ------ |: -------------:|: ------------------------------------------:|: ---------------:|: ----------------------------------------: |
+| ------ | -------------- | ------------------------------------------- | ---------------- | ------------------------------------------ |
 | GET    | /users         | API_TOKEN                                   | API_TOKEN valide | listes de tous les utilisateurs de la base |
 | POST   | /users         | API_TOKEN + donnée utilisateur              | API_TOKEN valide | crée l'utilisateur si absent               |
 | GET    | /users/:id     | API_TOKEN                                   | API_TOKEN valide | renvoie les infos de l'utilisateur :id     |
