@@ -128,3 +128,137 @@ On va donc créer le repertoire `controllers` et modifié le `config.ru`.
 mkdir controllers
 ```
 
+Nous allons y créer 4 controllers : Application, User, Auth et Token
+
+```shell
+cd controllers
+touch application_controller.rb user_controller.rb auth_controller.rb token_controller.rb
+```
+
+Dans chacun des controllers, nous allons mettre ce que nous avions dans le `app.rb` puis enlever ce qui ne concerne plus le controller.
+
+```ruby
+# application_controller.rb
+require 'sinatra/base'
+require 'sinatra/json'
+
+class ApplicationController < Sinatra::Base
+
+  routes_missing = lambda do
+    json :response => "Cette route n'existe pas"
+  end
+
+  get '*', &routes_missing
+
+end
+```
+
+```ruby
+# auth_controller.rb
+require 'sinatra/base'
+require 'sinatra/json'
+
+class AuthController < Sinatra::Base
+
+  session_create = session_delete  = lambda do
+    json :response => 'Work in progress'
+  end
+
+  routes_missing = lambda do
+    json :response => "Cette route n'existe pas"
+  end
+
+
+  post '/auth', &session_create
+  delete '/auth', &session_delete
+
+  get '*', &routes_missing
+
+end
+```
+
+```ruby
+# token_controller.rb
+require 'sinatra/base'
+require 'sinatra/json'
+
+class TokenController < Sinatra::Base
+
+  token_show = lambda do
+    json :response => 'Work in progress'
+  end
+
+  routes_missing = lambda do
+    json :response => "Cette route n'existe pas"
+  end
+
+
+  post '/token', &token_show
+
+  get '*', &routes_missing
+
+end
+```
+
+```ruby
+# user_controller.rb
+require 'sinatra/base'
+require 'sinatra/json'
+
+class UserController < Sinatra::Base
+
+  users_list =  users_create =  users_show = users_update = users_delete = lambda do
+    json :response => 'Work in progress'
+  end
+
+  routes_missing = lambda do
+    json :response => "Cette route n'existe pas"
+  end
+
+  get '/users', &users_list
+  post '/users', &users_create
+  get '/users/:id', &users_show
+  put '/users/:id', &users_update
+  delete '/users/:id', &users_delete
+
+  get '*', &routes_missing
+
+end
+```
+
+Ìl faut maintenant modifier le `config.ru` pour appeler ces controllers plutot que le `app.rb`
+
+```ruby
+# config.ru
+require 'sinatra'
+require './app.rb'
+
+Dir.glob('./{controllers}/*.rb').each { |file| require file }
+
+map('/users') {run UserController}
+map('/auth') {run AuthController}
+map('/token') {run TokenController}
+map('/') {run ApplicationController}
+```
+
+En modifiant le `config.ru`, on se rends comptes que l'url est doublonnée. il faut retirer des paths du controller la partie ajouter dans le `config.ru`
+Ainsi, dans le UserController par exemple.
+Ceci
+
+```ruby
+  get '/users', &users_list
+  post '/users', &users_create
+  get '/users/:id', &users_show
+  put '/users/:id', &users_update
+  delete '/users/:id', &users_delete
+```
+
+devient
+
+```ruby
+  get '/', &users_list
+  post '/', &users_create
+  get '/:id', &users_show
+  put '/:id', &users_update
+  delete '/:id', &users_delete
+```
