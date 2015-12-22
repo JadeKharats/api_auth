@@ -1,4 +1,4 @@
-Construire une API micro service auth avec sinatra et rethinkdb
+Construire une API micro service auth avec sinatra et mongo
 ==
 
 Identifions les besoins
@@ -329,3 +329,81 @@ map('/auth') {run AuthController}
 map('/token') {run TokenController}
 map('/') {run ApplicationController}
 ```
+
+Création du modèle User
+-
+
+Commençons par créer le fichier `models/user.rb`
+```shell
+mkdir models
+touch models/user.rb
+```
+
+on modifie le config.ru pour charger les modeles
+```ruby
+require 'sinatra'
+
+require_relative 'controllers/application_controller'
+
+Dir.glob('./{models,controllers}/*.rb').each { |file| require file }
+
+map('/users') {run UserController}
+map('/auth') {run AuthController}
+map('/token') {run TokenController}
+map('/') {run ApplicationController}
+```
+
+Maintenant on crée le modele user avec plein de donnée bouchonnée dedans ;-)
+
+```ruby
+# user.rb
+class User
+
+  def initialize(login = 'itsme', password = 'plop1234')
+    @id = 153
+    @login = login
+    @password = password
+    @salt = SecureRandom.hex
+    @api_token = SecureRandom.hex
+    @session_token = SecureRandom.hex
+    @session_expire_date = Time.now
+    @created_at = Time.now
+    @updated_at = Time.now
+  end
+
+end
+```
+
+Dans le user_controller.rb, on change la lambda pour charger un user
+
+```ruby
+# user_controller.rb
+class UserController < ApplicationController
+
+  users_list =  users_create =  users_show = users_update = users_delete = lambda do
+    u1 = User.new
+    json :response => u1.inspect
+  end
+
+  get '/', &users_list
+  post '/', &users_create
+  get '/:id', &users_show
+  put '/:id', &users_update
+  delete '/:id', &users_delete
+
+end
+```
+
+et on rajoute deux lignes au `config.ru`
+```ruby
+require 'securerandom'
+require 'json'
+```
+
+on relance puma et ça fonctionne
+
+```shell
+curl localhost:9292/users
+{"response":"#<User:0x000000016fb728 @id=153, @login=\"itsme\", @password=\"plop1234\", @salt=\"5fd481607a4fd51fe2d21919d7035237\", @api_token=\"292e401c582afc51cd034cdf6a96f0f6\", @session_token=\"dbae864efa5dd1fc69fe81a299165070\", @session_expire_date=2015-12-22 21:46:08 +0100, @created_at=2015-12-22 21:46:08 +0100, @updated_at=2015-12-22 21:46:08 +0100>"}
+```
+

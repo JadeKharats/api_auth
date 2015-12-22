@@ -1,8 +1,10 @@
 require 'sinatra'
+require 'securerandom'
+require 'json'
 
 require_relative 'controllers/application_controller'
 
-Dir.glob('./{controllers}/*.rb').each { |file| require file }
+Dir.glob('./{models,controllers}/*.rb').each { |file| require file }
 
 map('/users') {run UserController}
 map('/auth') {run AuthController}

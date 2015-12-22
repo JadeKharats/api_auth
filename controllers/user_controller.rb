@@ -1,7 +1,8 @@
 class UserController < ApplicationController
 
   users_list =  users_create =  users_show = users_update = users_delete = lambda do
-    json :response => 'Work in progress'
+    u1 = User.new
+    json :response => u1.inspect
   end
 
   get '/', &users_list
