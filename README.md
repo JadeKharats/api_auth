@@ -786,3 +786,7 @@ class UserController < ApplicationController
 
 end
 ```
+
+Securisons le mot de passe
+-
+
