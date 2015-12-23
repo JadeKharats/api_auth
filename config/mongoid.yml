@@ -1,0 +1,6 @@
+development:
+  clients:
+    default:
+      database: auth_api
+      hosts:
+        - localhost:27017

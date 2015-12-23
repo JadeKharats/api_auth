@@ -409,3 +409,134 @@ curl localhost:9292/users
 
 Ajout de l'orm Mongo
 -
+Nous allons utiliser mongoid. Il en existe d'autres comme mongo_mapper, candy,...
+
+On commence par modifier le Gemfile :
+
+```ruby
+# Gemfile
+source 'https://rubygems.org'
+
+gem 'sinatra'
+gem 'sinatra-contrib'
+gem 'puma'
+
+gem 'mongoid'
+```
+
+puis on lance un `bundle install`.
+
+Il faut ensuite définir la connexion à la base. Pour celà, on va créer un fichier de config `mongoid.yml`
+
+```yaml
+# config/mongoid.yml
+development:
+  clients:
+    default:
+      database: auth_api
+      hosts:
+        - localhost:27017
+```
+
+Pour la production, on vera qu'il est mieux de mettre ces paramètres en variables d'environnement.
+
+Maintenant, nous allons charger ces paramètres à partir du `config.ru`
+```ruby
+# config.ru
+require 'sinatra'
+require 'securerandom'
+require 'json'
+require 'mongoid'
+
+require_relative 'controllers/application_controller'
+
+Dir.glob('./{models,controllers}/*.rb').each { |file| require file }
+
+Mongoid.load!("config/mongoid.yml")
+
+map('/users') {run UserController}
+map('/auth') {run AuthController}
+map('/token') {run TokenController}
+map('/') {run ApplicationController}
+```
+
+A ce stade, si on lance le serveur `puma` on doit voir :
+```shell
+$ puma
+Puma starting in single mode...
+* Version 2.15.3 (ruby 2.2.3-p173), codename: Autumn Arbor Airbrush
+* Min threads: 0, max threads: 16
+* Environment: development
+* Listening on tcp://0.0.0.0:9292
+Use Ctrl-C to stop
+D, [2015-12-23T09:14:12.644902 #10026] DEBUG -- : MONGODB | Adding localhost:27017 to the cluster.ll
+```
+
+Enfin, nous allons modifier le modèle user pour le transformer en document mongo
+```ruby
+# models/user.rb
+class User
+  include Mongoid::Document
+  include Mongoid::Timestamps
+
+  field :login
+  field :password
+  field :salt
+  field :api_token
+  field :session_token
+  field :session_expire_date
+
+end
+```
+
+Le champ `id` est géré par mongoid. Les champs `created_at` et `updated_at` sont géré par `Mongoid::Timestamps`
+
+Pour tester tout ça, on va demander à sinatra de créer un utilisateur à chaque appel sur '/users/'.
+
+```ruby
+# controllers/user_controller.rb
+class UserController < ApplicationController
+
+  users_list =  users_create =  users_show = users_update = users_delete = lambda do
+    u1 = User.new
+    u1.login = 'plop'
+    u1.password = '1234'
+    u1.save
+    json :response => u1.inspect
+  end
+
+  get '/', &users_list
+  post '/', &users_create
+  get '/:id', &users_show
+  put '/:id', &users_update
+  delete '/:id', &users_delete
+
+end
+```
+
+on relance `puma` et on lance un curl
+
+```shell
+$ puma
+Puma starting in single mode...
+* Version 2.15.3 (ruby 2.2.3-p173), codename: Autumn Arbor Airbrush
+* Min threads: 0, max threads: 16
+* Environment: development
+* Listening on tcp://0.0.0.0:9292
+Use Ctrl-C to stop
+D, [2015-12-23T09:25:43.215365 #10429] DEBUG -- : MONGODB | Adding localhost:27017 to the cluster.
+```
+
+```shell
+$ curl localhost:9292/users
+{"response":"#\u003cUser _id: 567a5a87f43a1c28bd000000, created_at: 2015-12-23 08:25:43 UTC, updated_at: 2015-12-23 08:25:43 UTC, login: \"plop\", password: \"1234\", salt: nil, api_token: nil, session_token: nil, session_expire_date: nil\u003e"}
+```
+
+Dans la console puma :
+```shell
+D, [2015-12-23T09:25:43.216707 #10429] DEBUG -- : MONGODB | localhost:27017 | auth_api.insert | STARTED | {"insert"=>"users", "documents"=>[{"_id"=>BSON::ObjectId('567a5a87f43a1c28bd000000'), "login"=>"plop", "password"=>"1234", "updated_at"=>2015-12-23 08:25:43 UTC, "created_at"=>2015-12-23 08:25:43 UTC}], "ordered"=>true}
+```
+
+Tout fonctionne bien.
+Nous avons notre API, la persistance en mongo et les urls métiers.
+On va maintenant s'attaquer au traitement.

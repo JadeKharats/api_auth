@@ -4,5 +4,4 @@ gem 'sinatra'
 gem 'sinatra-contrib'
 gem 'puma'
 
-gem 'mongo'
-gem 'bson_ext'
+gem 'mongoid'
