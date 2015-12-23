@@ -118,6 +118,9 @@ $ curl http://0.0.0.0:9292/users
 {"response":"Work in progress"}
 ```
 
+J'utilise curl pour avoir quelquechose de facile à mettre dans ce document.
+Mais je vous conseille le plugin chrome `postman` pour vous simplifier la vie.
+
 Premier refactor
 -
 
