@@ -540,3 +540,246 @@ D, [2015-12-23T09:25:43.216707 #10429] DEBUG -- : MONGODB | localhost:27017 | au
 Tout fonctionne bien.
 Nous avons notre API, la persistance en mongo et les urls métiers.
 On va maintenant s'attaquer au traitement.
+A partir de maintenant, nous ne toucherons normalement plus au coté technique.
+
+La validation du modèle user
+-
+
+Commençons par rajouter un peu de validation au modèle `user`. Si vous êtes comme moi et que vous avez fait plein de curl à l'étape précédente, vous avez pu observer que l'on peut créer une infinité de `user` ayant les mêmes valeurs.
+
+```ruby
+# models/user.rb
+class User
+  include Mongoid::Document
+  include Mongoid::Timestamps
+
+  field :login
+  field :password
+  field :salt
+  field :api_token
+  field :session_token
+  field :session_expire_date
+
+  validates :login, uniqueness: true
+
+  validates :login, presence: true
+  validates :password, presence: true
+  validates :password, length: { minimum: 8, maximum: 16 }
+end
+```
+
+Pensez à aller sur votre base mongo faire le ménage.
+
+```shell
+$ mongo
+MongoDB shell version: 3.0.8
+connecting to: test
+> use auth_api
+switched to db auth_api
+> db.users.find()
+{ "_id" : ObjectId("567a57d4f43a1c272a000000"), "login" : "plop", "password" : "1234" }
+> db.users.find()
+{ "_id" : ObjectId("567a57d4f43a1c272a000000"), "login" : "plop", "password" : "1234" }
+{ "_id" : ObjectId("567a5a47f43a1c27c0000000"), "login" : "plop", "password" : "1234" }
+> db.users.drop()
+true
+> db.users.find()
+>
+```
+
+Le controller user
+-
+
+Commençons par le `get '/', &users_list`.
+
+Nous avons juste besoin de renvoyer la liste des éléments en base.
+
+```ruby
+# controllers/user_controller.rb
+class UserController < ApplicationController
+
+  users_list =  lambda do
+    json User.all
+  end
+
+  users_create =  users_show = users_update = users_delete = lambda do
+    u1 = User.new
+    u1.login = 'plop2'
+    u1.password = '12345678'
+    u1.api_token = 'qghfh'
+    u1.save
+    json :response => u1.inspect
+  end
+
+  get '/', &users_list
+  post '/', &users_create
+  get '/:id', &users_show
+  put '/:id', &users_update
+  delete '/:id', &users_delete
+
+end
+```
+
+on relance `puma` et notre curl
+
+```shell
+$ curl localhost:9292/users
+[{"_id":{"$oid":"567a62d1f43a1c2cb8000000"},"api_token":null,"created_at":"2015-12-23T10:01:05.144+01:00","login":"plop","password":"12345678","salt":null,"session_expire_date":null,"session_token":null,"updated_at":"2015-12-23T10:01:05.144+01:00"},{"_id":{"$oid":"567a631af43a1c2e99000000"},"api_token":"qghfh","created_at":"2015-12-23T10:02:18.337+01:00","login":"plop2","password":"12345678","salt":null,"session_expire_date":null,"session_token":null,"updated_at":"2015-12-23T10:02:18.337+01:00"}]
+```
+
+Jusque là, c'est facile ;-)
+
+la fonction user_show est tout aussi simple
+```ruby
+  users_show = lambda do
+    json User.find_by(id: params[:id])
+  end
+```
+
+pour le test, il faut prendre un des id renvoyé par le curl précédent. ici `567a631af43a1c2e99000000`
+
+```shell
+curl localhost:9292/users/567a631af43a1c2e99000000
+{"_id":{"$oid":"567a631af43a1c2e99000000"},"api_token":"qghfh","created_at":"2015-12-23T10:02:18.337+01:00","login":"plop2","password":"12345678","salt":null,"session_expire_date":null,"session_token":null,"updated_at":"2015-12-23T10:02:18.337+01:00"}
+```
+
+En revanche, l'appel à un id inexistant génère une erreur. On modifie le controller pour prendre en compte ce cas.
+
+```ruby
+  users_show = lambda do
+    if User.where(id: params[:id]).exists?
+      json User.find(params[:id])
+    else
+      json :message => 'ID not found'
+    end
+  end
+```
+
+Nous allons créer des users maintenant.
+
+```ruby
+  users_create = lambda do
+    user = User.new
+    user.login = params[:login]
+    user.password = params[:password]
+    user.save
+    json user
+  end
+```
+
+si on teste avec un curl
+
+```shell
+$ curl --request POST 'http://localhost:9292/users' --data "login=jade&password=kharats01"
+{"_id":{"$oid":"567a68d4f43a1c3c36000000"},"api_token":null,"created_at":"2015-12-23T10:26:44.848+01:00","login":"jade","password":"kharats01","salt":null,"session_expire_date":null,"session_token":null,"updated_at":"2015-12-23T10:26:44.848+01:00"}
+```
+
+Ok ça fonctionne. Par contre, il faut gérer d'autre cas comme un paramètre absent ou invalide.
+On va d'abords finir tous les cas passants.
+
+Il nous reste l'update et le delete.
+
+Pour le delete, on reprends en partie le code du show
+
+```ruby
+  users_delete = lambda do
+    if User.where(id: params[:id]).exists?
+      User.where(id: params[:id]).destroy
+      json :message => "ID #{params[:id]} destroy"
+    else
+      json :message => 'ID not found'
+    end
+  end
+```
+
+```shell
+$ curl --request DELETE localhost:9292/users/567a631af43a1c2e99000000
+{"message":"ID 567a631af43a1c2e99000000 destroy"}
+$ curl --request DELETE localhost:9292/users/567a631af43a1c2e99000000
+{"message":"ID not found"}
+```
+
+Le premier curl efface le `user` et le deuxieme confirme cette effacement.
+
+Pour l'update, on cherche l'element passé en argument puis on change les paramètres envoyer en data du POST
+
+```ruby
+  users_update = lambda do
+    if User.where(id: params[:id]).exists?
+      user = User.find(params[:id])
+      user.login = params[:login] if params[:login]
+      user.password = params[:password] if params[:password]
+      user.save
+      json user
+    else
+      json :message => 'ID not found'
+    end
+  end
+```
+
+Testons en curl
+
+```shell
+$ curl --request GET localhost:9292/users/567a68d4f43a1c3c36000000
+{"_id":{"$oid":"567a68d4f43a1c3c36000000"},"api_token":null,"created_at":"2015-12-23T10:26:44.848+01:00","login":"jade","password":"kharats01","salt":null,"session_expire_date":null,"session_token":null,"updated_at":"2015-12-23T10:26:44.848+01:00"}
+
+$ curl --request PUT localhost:9292/users/567a68d4f43a1c3c36000000 --data 'password=tintagel'
+{"_id":{"$oid":"567a68d4f43a1c3c36000000"},"api_token":null,"created_at":"2015-12-23T10:26:44.848+01:00","login":"jade","password":"tintagel","salt":null,"session_expire_date":null,"session_token":null,"updated_at":"2015-12-23T10:42:56.711+01:00"}
+```
+
+Seul le champ passé en argument de la requete PUT à été mis à jour.
+
+Petit recap du fichier `controllers/users_controller.rb`
+```ruby
+# controllers/users_controller.rb
+class UserController < ApplicationController
+
+  users_list =  lambda do
+    json User.all
+  end
+
+  users_show = lambda do
+    if User.where(id: params[:id]).exists?
+      json User.find(params[:id])
+    else
+      json :message => 'ID not found'
+    end
+  end
+
+  users_delete = lambda do
+    if User.where(id: params[:id]).exists?
+      User.where(id: params[:id]).destroy
+      json :message => "ID #{params[:id]} destroy"
+    else
+      json :message => 'ID not found'
+    end
+  end
+
+  users_create = lambda do
+    user = User.new
+    user.login = params[:login]
+    user.password = params[:password]
+    user.save
+    json user
+  end
+
+  users_update = lambda do
+    if User.where(id: params[:id]).exists?
+      user = User.find(params[:id])
+      user.login = params[:login] if params[:login]
+      user.password = params[:password] if params[:password]
+      user.save
+      json user
+    else
+      json :message => 'ID not found'
+    end
+  end
+
+  get '/', &users_list
+  post '/', &users_create
+  get '/:id', &users_show
+  put '/:id', &users_update
+  delete '/:id', &users_delete
+
+end
+```
