@@ -893,6 +893,50 @@ Puis on modifie le modèle `User` pour y ajouter la méthode `authenticate`.
         user_in_db.session_token = SecureRandom.urlsafe_base64
         user_in_db.session_expire_date = Time.now + 3 * 60 * 60
         user_in_db.save!
+        return {token: user_in_db.session_token, session_expire_date: user_in_db.session_expire_date}am
+      else
+        return {message: 'Bad Bad Password'}
+      end
+    else
+      return {message: "user #{login} not found!"}
+    end
+  end
+```
+
+Troisième refactor
+-
+En Réalisant quelques tests, je me suis rendu compte que mon callback `before_save :encrypt_password` me faisait grave c****. En effet, j'ai besoin de crypter le mot de passe à la création de l'utilisateur ou à sa modification. Mais là, je le réencrypte à chaque `save`. Depuis que j'ai rajouté les sessions, je fais souvent des `save`, ce qui me pose problème.
+
+Je décide donc de supprimer le callback, et de déproteger la méthode `encrypt_password`.
+
+```ruby
+class User
+  include Mongoid::Document
+  include Mongoid::Timestamps
+  include BCrypt
+
+  attr_accessor   :password
+
+  field :login
+  field :password_hash
+  field :salt
+  field :api_token
+  field :session_token
+  field :session_expire_date
+
+  validates :login, uniqueness: true
+
+  validates :login, presence: true
+  validates :password, presence: true
+  validates :password, length: { minimum: 8, maximum: 16 }
+
+  def authenticate(login,password)
+    user_in_db = User.where(login: login).first
+    if user_in_db
+      if Password.new(user_in_db.password_hash) == password
+        user_in_db.session_token = SecureRandom.urlsafe_base64
+        user_in_db.session_expire_date = Time.now + 3 * 60 * 60
+        user_in_db.save!(validate: false)
         return {token: user_in_db.session_token, session_expire_date: user_in_db.session_expire_date}
       else
         return {message: 'Bad Bad Password'}
@@ -901,4 +945,68 @@ Puis on modifie le modèle `User` pour y ajouter la méthode `authenticate`.
       return {message: "user #{login} not found!"}
     end
   end
+
+  def encrypt_password
+    self.password_hash = Password.create(@password)
+  end
+end
+```
+
+Et dans le controller `user_controller.rb`
+
+```ruby
+class UserController < ApplicationController
+
+  users_list =  lambda do
+    json User.all
+  end
+
+  users_show = lambda do
+    if User.where(id: params[:id]).exists?
+      json User.find(params[:id])
+    else
+      json :message => 'ID not found'
+    end
+  end
+
+  users_delete = lambda do
+    if User.where(id: params[:id]).exists?
+      User.where(id: params[:id]).destroy
+      json :message => "ID #{params[:id]} destroy"
+    else
+      json :message => 'ID not found'
+    end
+  end
+
+  users_create = lambda do
+    user = User.new
+    user.login = params[:login]
+    user.password = params[:password]
+    user.encrypt_password
+    user.save
+    json user
+  end
+
+  users_update = lambda do
+    if User.where(id: params[:id]).exists?
+      user = User.find(params[:id])
+      user.login = params[:login] if params[:login]
+      if params[:password]
+        user.password = params[:password]
+        user.encrypt_password
+      end
+      user.save
+      json user
+    else
+      json :message => 'ID not found'
+    end
+  end
+
+  get '/', &users_list
+  post '/', &users_create
+  get '/:id', &users_show
+  put '/:id', &users_update
+  delete '/:id', &users_delete
+
+end
 ```

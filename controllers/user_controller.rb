@@ -25,6 +25,7 @@ class UserController < ApplicationController
     user = User.new
     user.login = params[:login]
     user.password = params[:password]
+    user.encrypt_password
     user.save
     json user
   end
@@ -33,7 +34,10 @@ class UserController < ApplicationController
     if User.where(id: params[:id]).exists?
       user = User.find(params[:id])
       user.login = params[:login] if params[:login]
-      user.password = params[:password] if params[:password]
+      if params[:password]
+        user.password = params[:password]
+        user.encrypt_password
+      end
       user.save
       json user
     else

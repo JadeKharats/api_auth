@@ -18,16 +18,13 @@ class User
   validates :password, presence: true
   validates :password, length: { minimum: 8, maximum: 16 }
 
-  before_save :encrypt_password
-
   def authenticate(login,password)
     user_in_db = User.where(login: login).first
-    user_in_db.password = password
     if user_in_db
       if Password.new(user_in_db.password_hash) == password
         user_in_db.session_token = SecureRandom.urlsafe_base64
         user_in_db.session_expire_date = Time.now + 3 * 60 * 60
-        user_in_db.save!
+        user_in_db.save!(validate: false)
         return {token: user_in_db.session_token, session_expire_date: user_in_db.session_expire_date}
       else
         return {message: 'Bad Bad Password'}
@@ -36,8 +33,6 @@ class User
       return {message: "user #{login} not found!"}
     end
   end
-
-  protected
 
   def encrypt_password
     self.password_hash = Password.create(@password)
