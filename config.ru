@@ -2,6 +2,7 @@ require 'sinatra'
 require 'securerandom'
 require 'json'
 require 'mongoid'
+require 'bcrypt'
 
 require_relative 'controllers/application_controller'
 

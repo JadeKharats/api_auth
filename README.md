@@ -790,3 +790,56 @@ end
 Securisons le mot de passe
 -
 
+Pour se faire, nous allons utiliser la gem 'bcrypt' dont voici un exemple tiré de la rubydoc.
+```ruby
+include BCrypt
+
+# hash a user's password
+@password = Password.create("my grand secret")
+@password #=> "$2a$10$GtKs1Kbsig8ULHZzO1h2TetZfhO4Fmlxphp8bVKnUlZCBYYClPohG"
+```
+
+On commence donc par ajouter `gem 'bcrypt'` a notre `Gemfile`
+
+Ensuite nous allons modifier notre model `models/user.rb` pour stocker le hash du password au lieu du password. Et modifier le nom du champs pour eviter toute confusion.
+
+```ruby
+# models/user.rb
+class User
+  include Mongoid::Document
+  include Mongoid::Timestamps
+  include BCrypt
+
+  attr_accessor   :password
+
+  field :login
+  field :password_hash
+  field :salt
+  field :api_token
+  field :session_token
+  field :session_expire_date
+
+  validates :login, uniqueness: true
+
+  validates :login, presence: true
+  validates :password, presence: true
+  validates :password, length: { minimum: 8, maximum: 16 }
+
+  before_save :encrypt_password
+
+  protected
+
+  def encrypt_password
+    self.password_hash = Password.create(@password)
+  end
+end
+```
+
+Relançons le serveur et regardons le résultat pour la création du `User`
+
+```shell
+ curl --request POST 'http://localhost:9292/users' --data "login=jade&password=kharats01"
+{"_id":{"$oid":"568b79a6f43a1c101c000004"},"api_token":null,"created_at":"2016-01-05T09:07:02.537+01:00","login":"jade","password_hash":"$2a$10$ddjpgi5BQIwETAW2DYqIvugggxFR2f3rVpnfuAcu3XOlkf6hZ2pn.","salt":null,"session_expire_date":null,"session_token":null,"updated_at":"2016-01-05T09:07:02.537+01:00"}
+```
+
+On stocke bien le hash du password et non le password en lui même. Pour plus de sécurité, il faudrait mettre en place un salt.
