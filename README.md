@@ -799,7 +799,10 @@ include BCrypt
 @password #=> "$2a$10$GtKs1Kbsig8ULHZzO1h2TetZfhO4Fmlxphp8bVKnUlZCBYYClPohG"
 ```
 
-On commence donc par ajouter `gem 'bcrypt'` a notre `Gemfile`
+On commence donc par ajouter `gem 'bcrypt'` a notre `Gemfile`.
+On ajoute la ligne `require 'bcrypt'` dans le `config.ru`.
+Enfin on relance un `bundle install`.
+
 
 Ensuite nous allons modifier notre model `models/user.rb` pour stocker le hash du password au lieu du password. Et modifier le nom du champs pour eviter toute confusion.
 
@@ -874,8 +877,28 @@ class AuthController < ApplicationController
 end
 ```
 
-On peut voir que je fait appel à la méthode `authenticate!`. Il va falloir la rajouter à notre modèle.
+On peut voir que je fait appel à la méthode `authenticate`. Il va falloir la rajouter à notre modèle. Et utiliser un moyen de générer un token. Pour le token, nous allons utiliser `securerandom` qui est une librairie standard de ruby.
+
+On charge la librairie dans le `config.ru` en ajoutant `require 'securerandom'`.
+
+Puis on modifie le modèle `User` pour y ajouter la méthode `authenticate`.
 
 ```ruby
 # models/users.rb
-
+  def authenticate(login,password)
+    user_in_db = User.where(login: login).first
+    user_in_db.password = password
+    if user_in_db
+      if Password.new(user_in_db.password_hash) == password
+        user_in_db.session_token = SecureRandom.urlsafe_base64
+        user_in_db.session_expire_date = Time.now + 3 * 60 * 60
+        user_in_db.save!
+        return user_in_db
+      else
+        return {message: 'Bad Bad Password'}
+      end
+    else
+      return {message: "user #{login} not found!"}
+    end
+  end
+```
