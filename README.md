@@ -842,4 +842,4 @@ Relançons le serveur et regardons le résultat pour la création du `User`
 {"_id":{"$oid":"568b79a6f43a1c101c000004"},"api_token":null,"created_at":"2016-01-05T09:07:02.537+01:00","login":"jade","password_hash":"$2a$10$ddjpgi5BQIwETAW2DYqIvugggxFR2f3rVpnfuAcu3XOlkf6hZ2pn.","salt":null,"session_expire_date":null,"session_token":null,"updated_at":"2016-01-05T09:07:02.537+01:00"}
 ```
 
-On stocke bien le hash du password et non le password en lui même. Pour plus de sécurité, il faudrait mettre en place un salt.
+On stocke bien le hash du password et non le password en lui même. BCrypt fournit le mecanisme de salt. Je n'ai plus besoin de prévoir son stockage. on supprime donc la ligne `field :salt` du model `user.rb`
