@@ -3,6 +3,8 @@ require 'securerandom'
 require 'json'
 require 'mongoid'
 require 'bcrypt'
+require 'securerandom'
+
 
 require_relative 'controllers/application_controller'
 

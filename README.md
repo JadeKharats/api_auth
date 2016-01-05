@@ -843,3 +843,39 @@ Relançons le serveur et regardons le résultat pour la création du `User`
 ```
 
 On stocke bien le hash du password et non le password en lui même. BCrypt fournit le mecanisme de salt. Je n'ai plus besoin de prévoir son stockage. on supprime donc la ligne `field :salt` du model `user.rb`
+
+Nous avons fait le tour pour l'API /users. On peut maintenant s'attaquer à l'API /auth.
+
+L'API AUTH
+-
+
+L'API /auth va donc permettre de créer des sessions et d'en supprimer.
+
+Commençons par la création. Pour celà, nous allons recevoir le couple login/password en POST, créer une nouvelle instance `User` et vérifier les identifiants. Allons-y!
+
+Modifions le controller `controllers/auth_controller.rb`
+```ruby
+# controllers/auth_controller.rb
+class AuthController < ApplicationController
+
+  session_create = lambda do
+    user = User.new
+    json user.authenticate(params[:login],params[:password])
+  end
+
+
+  session_delete  = lambda do
+    json :response => 'Work in progress'
+  end
+
+  post '/', &session_create
+  delete '/', &session_delete
+
+end
+```
+
+On peut voir que je fait appel à la méthode `authenticate!`. Il va falloir la rajouter à notre modèle.
+
+```ruby
+# models/users.rb
+
