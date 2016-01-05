@@ -893,7 +893,7 @@ Puis on modifie le modèle `User` pour y ajouter la méthode `authenticate`.
         user_in_db.session_token = SecureRandom.urlsafe_base64
         user_in_db.session_expire_date = Time.now + 3 * 60 * 60
         user_in_db.save!
-        return user_in_db
+        return {token: user_in_db.session_token, session_expire_date: user_in_db.session_expire_date}
       else
         return {message: 'Bad Bad Password'}
       end
