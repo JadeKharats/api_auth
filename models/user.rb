@@ -23,14 +23,20 @@ class User
   end
 
   def create_token
-    @session_token = SecureRandom.urlsafe_base64
-    @session_expire_date = Time.now + 3 * 60 * 60
-    self..save!(validate: false)
+    self.session_token = SecureRandom.urlsafe_base64
+    self.session_expire_date = Time.now + 3 * 60 * 60
+    self.save!(validate: false)
     format_token
   end
 
   def format_token
-    {token: @session_token, session_expire_date: @session_expire_date}
+    {token: self.session_token, session_expire_date: self.session_expire_date}
+  end
+
+  def remove_token
+    self.session_token = nil
+    self.session_expire_date = nil
+    self.save!(validate: false)
   end
 
   def encrypt_password

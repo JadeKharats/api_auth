@@ -15,7 +15,13 @@ class AuthController < ApplicationController
 
 
   session_delete  = lambda do
-    json :response => 'Work in progress'
+    user = User.where(session_token: params[:token]).first
+    if user
+      user.remove_token
+      json :message => 'Token destroyed'
+    else
+      json :message => 'Bad Token'
+    end
   end
 
   post '/', &session_create
