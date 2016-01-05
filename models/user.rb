@@ -18,20 +18,19 @@ class User
   validates :password, presence: true
   validates :password, length: { minimum: 8, maximum: 16 }
 
-  def authenticate(login,password)
-    user_in_db = User.where(login: login).first
-    if user_in_db
-      if Password.new(user_in_db.password_hash) == password
-        user_in_db.session_token = SecureRandom.urlsafe_base64
-        user_in_db.session_expire_date = Time.now + 3 * 60 * 60
-        user_in_db.save!(validate: false)
-        return {token: user_in_db.session_token, session_expire_date: user_in_db.session_expire_date}
-      else
-        return {message: 'Bad Bad Password'}
-      end
-    else
-      return {message: "user #{login} not found!"}
-    end
+  def check_password? (password)
+    Password.new(self.password_hash) == password
+  end
+
+  def create_token
+    @session_token = SecureRandom.urlsafe_base64
+    @session_expire_date = Time.now + 3 * 60 * 60
+    self..save!(validate: false)
+    format_token
+  end
+
+  def format_token
+    {token: @session_token, session_expire_date: @session_expire_date}
   end
 
   def encrypt_password

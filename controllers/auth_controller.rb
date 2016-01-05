@@ -1,8 +1,16 @@
 class AuthController < ApplicationController
 
   session_create = lambda do
-    user = User.new
-    json user.authenticate(params[:login],params[:password])
+    user = User.where(login: params[:login]).first
+    if user
+      if user.check_password?(params[:password])
+        json user.create_token
+      else
+        json :message => 'Bad credential'
+      end
+    else
+      json :message => 'Bad credential'
+    end
   end
 
 

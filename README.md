@@ -1010,3 +1010,76 @@ class UserController < ApplicationController
 
 end
 ```
+
+Après un bon repas et une petite reflexion perso, je me dis que ça mérite encore un petit refacto des familles. En fait, j'aime pas trop ma methode `authenticate` qui n'authentifie pas vraiment. Je crée juste un token. Je vais découper ça de manière plus propre à mon goût. Je vous laisse juger par vous même.
+
+```ruby
+# models/user.rb
+class User
+  include Mongoid::Document
+  include Mongoid::Timestamps
+  include BCrypt
+
+  attr_accessor   :password
+
+  field :login
+  field :password_hash
+  field :salt
+  field :api_token
+  field :session_token
+  field :session_expire_date
+
+  validates :login, uniqueness: true
+
+  validates :login, presence: true
+  validates :password, presence: true
+  validates :password, length: { minimum: 8, maximum: 16 }
+
+  def check_password? (password)
+    Password.new(self.password_hash) == password
+  end
+
+  def create_token
+    @session_token = SecureRandom.urlsafe_base64
+    @session_expire_date = Time.now + 3 * 60 * 60
+    self..save!(validate: false)
+    format_token
+  end
+
+  def format_token
+    {token: @session_token, session_expire_date: @session_expire_date}
+  end
+
+  def encrypt_password
+    self.password_hash = Password.create(@password)
+  end
+end
+```
+
+```ruby
+# controllers/auth_controller.rb
+class AuthController < ApplicationController
+
+  session_create = lambda do
+    user = User.where(login: params[:login]).first
+    if user
+      if user.check_password?(params[:password])
+        json user.create_token
+      else
+        json :message => 'Bad credential'
+      end
+    else
+      json :message => 'Bad credential'
+    end
+  end
+
+
+  session_delete  = lambda do
+    json :response => 'Work in progress'
+  end
+
+  post '/', &session_create
+  delete '/', &session_delete
+
+end
+```
