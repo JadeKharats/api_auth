@@ -1,6 +1,11 @@
 Construire une API micro service auth avec sinatra et mongo
 ==
 
+C'est quoi, un microservice?
+-
+http://www.touilleur-express.fr/2015/02/25/micro-services-ou-peon-architecture/
+http://martinfowler.com/articles/microservices.html
+
 Identifions les besoins
 -
 
@@ -1165,6 +1170,95 @@ class User
     self.session_token = nil
     self.session_expire_date = nil
     self.save!(validate: false)
+  end
+
+  def encrypt_password
+    self.password_hash = Password.create(@password)
+  end
+end
+```
+
+Générer un token d'accès à l'API
+-
+
+On va reprendre une partie du code de l'API /auth.
+
+Pour le token, voici le `controllers/token_controller.rb`.
+
+```ruby
+# controllers/token_controller.rb
+class TokenController < ApplicationController
+
+  token_show = lambda do
+    user = User.where(login: params[:login]).first
+    if user
+      if user.check_password?(params[:password])
+        json user.create_api_token
+      else
+        json :message => 'Bad credential'
+      end
+    else
+      json :message => 'Bad credential'
+    end
+  end
+
+  post '/', &token_show
+
+end
+```
+
+Pour le modèle `User`, voici une première version de la modification de la classe.
+
+```ruby
+# models/user.rb
+class User
+  include Mongoid::Document
+  include Mongoid::Timestamps
+  include BCrypt
+
+  attr_accessor   :password
+
+  field :login
+  field :password_hash
+  field :api_token
+  field :session_token
+  field :session_expire_date
+
+  validates :login, uniqueness: true
+
+  validates :login, presence: true
+  validates :password, presence: true
+  validates :password, length: { minimum: 8, maximum: 16 }
+
+  def check_password? (password)
+    Password.new(self.password_hash) == password
+  end
+
+  def create_token
+    self.session_token = SecureRandom.urlsafe_base64
+    self.session_expire_date = Time.now + 3 * 60 * 60
+    self.save!(validate: false)
+    format_token
+  end
+
+  def format_token
+    {token: self.session_token, session_expire_date: self.session_expire_date}
+  end
+
+  def remove_token
+    self.session_token = nil
+    self.session_expire_date = nil
+    self.save!(validate: false)
+  end
+
+  def create_api_token
+    self.api_token = SecureRandom.urlsafe_base64
+    self.save!(validate: false)
+    format_api_token
+  end
+
+  def format_api_token
+    {token: self.api_token}
   end
 
   def encrypt_password

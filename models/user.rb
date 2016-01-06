@@ -7,7 +7,6 @@ class User
 
   field :login
   field :password_hash
-  field :salt
   field :api_token
   field :session_token
   field :session_expire_date
@@ -37,6 +36,16 @@ class User
     self.session_token = nil
     self.session_expire_date = nil
     self.save!(validate: false)
+  end
+
+  def create_api_token
+    self.api_token = SecureRandom.urlsafe_base64
+    self.save!(validate: false)
+    format_api_token
+  end
+
+  def format_api_token
+    {token: self.api_token}
   end
 
   def encrypt_password
