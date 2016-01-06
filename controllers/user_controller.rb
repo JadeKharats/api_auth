@@ -1,4 +1,4 @@
-class UserController < ApplicationController
+class UserController < ProtectedController
 
   users_list =  lambda do
     json User.all

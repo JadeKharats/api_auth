@@ -1266,3 +1266,84 @@ class User
   end
 end
 ```
+
+Protégeons les autres API par le token
+-
+
+Nous allons créer un nouveau controller qui va vérifier la présence du token dans le header de chaque requête.
+Je vais le nommer `ProtectedController` et utiliser le callback `before` pour la vérification.
+
+Essayons ça!
+
+```ruby
+# controllers/protected_controller.rb
+class ProtectedController < ApplicationController
+
+  before do
+    puts 'protected'
+  end
+
+end
+```
+
+et on fait hériter les controllers auth et user de ce controller.
+
+```ruby
+class AuthController < ProtectedController
+class UserController < ProtectedController
+```
+
+Je lance le serveur et fait un curl pour voir si je passe bien dans le `before`
+
+```shell
+$ puma
+Puma starting in single mode...
+* Version 2.15.3 (ruby 2.2.3-p173), codename: Autumn Arbor Airbrush
+* Min threads: 0, max threads: 16
+* Environment: development
+* Listening on tcp://0.0.0.0:9292
+Use Ctrl-C to stop
+protected
+D, [2016-01-06T14:34:38.711328 #27651] DEBUG -- : MONGODB | Adding localhost:27017 to the cluster.
+D, [2016-01-06T14:34:38.712945 #27651] DEBUG -- : MONGODB | localhost:27017 | auth_api.find | STARTED | {"find"=>"users", "filter"=>{"login"=>"jade"}, "limit"=>-1}
+```
+
+Super, ça fonctionne.
+
+Interceptons le header et vérifions le token.
+Avec Sinatra, on peut intercepter la partie `Authorization` du header grace au helper `env['HTTP_AUTHORIZATION'].
+
+Alors revoyons notre `before` du controller `protected`.
+
+```ruby
+# controllers/protected_controller.rb
+class ProtectedController < ApplicationController
+
+  before do
+    halt 403 unless User.where(api_token: env['HTTP_AUTHORIZATION']).first
+  end
+
+end
+```
+
+Petit test avec curl
+
+```shell
+$ curl -i --request POST 'http://localhost:9292/auth' --data "login=jade&password=kharats01" -H 'Authorization: 052itu87ibS83cUvLMyRsh'
+HTTP/1.1 403 Forbidden
+Content-Type: text/html;charset=utf-8
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+Content-Length: 0
+
+$ curl -i --request POST 'http://localhost:9292/auth' --data "login=jade&password=kharats01" -H 'Authorization: 052itu87ibS83cUvLMyRsg'
+HTTP/1.1 200 OK
+Content-Type: application/json
+X-Content-Type-Options: nosniff
+Content-Length: 83
+
+{"token":"1sK4ucvq5pNSauJFbU56Iw","session_expire_date":"2016-01-06T17:37:20.472Z"}
+```
+
+YEAH! BABY YEAH!!

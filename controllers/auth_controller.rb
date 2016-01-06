@@ -1,4 +1,4 @@
-class AuthController < ApplicationController
+class AuthController < ProtectedController
 
   session_create = lambda do
     user = User.where(login: params[:login]).first
