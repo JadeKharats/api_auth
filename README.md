@@ -1354,3 +1354,184 @@ Et si on parlait test!
 Comme vous avez pu le lire jusque là, j'ai fait les tests avec curl. J'ai aussi sauvegardé un projet sous PostMan (ume extension chrome). C'est pas très propre tout ça. Et surtout difficile à transmettre. Je vais donc rajouter les tests dnas le projet après coup. A tous les fans de TDD et/ou BDD, "désolé".
 
 Si j'avais fait du TDD, j'aurais utiliser `minitest` et `cucumber` pour le BDD. C'est donc ces librairies que j'utiliserais pour les tests.
+
+On commence donc par le `Gemfile`.
+
+```ruby
+# Gemfile
+source 'https://rubygems.org'
+
+gem 'sinatra'
+gem 'sinatra-contrib'
+gem 'puma'
+
+gem 'mongoid'
+gem 'bcrypt'
+
+group :test do
+  gem 'minitest'
+  gem 'cucumber'
+end
+```
+
+Vous noterez que j'ai mis ces gems dans un block de type 'group'. Celà permet de distinguer les environnements où les librairies sont utilisées. Dans le cas présent, nous n'avons besoin de minitest et cucumber que dans un environnement de test.
+
+N'oubliez pas le `bundle install` après avoir sauvegardé le `Gemfile`
+
+Pour lancer les tests, nous allons utiliser le gestionnaire de tâche de ruby, j'ai nommé `rake`
+
+Gestionnaire Rake
+-
+
+Lançons une première fois la commande pour voir ce qu'il en ressort.
+
+```shell
+$ rake
+rake aborted!
+No Rakefile found (looking for: rakefile, Rakefile, rakefile.rb, Rakefile.rb)
+```
+
+Comme `bundler` qui a besoin d'un `Gemfile`, `rake` a besoin d'un `Rakefile`. Toutes les possibilités de nom de fichier sont dans le message d'erreur. Pour ma part, j'ai toujours vu `Rakefile` et je garde donc cette écriture.
+
+On continue en créant le fichier vide
+
+```shell
+$ touch Rakefile
+$ rake                                                                    1 ↵
+rake aborted!
+Don't know how to build task 'default'
+```
+
+La commande `rake` prend en argument le nom de la tâche à éxécuter. Si on ne fournit pas cette argument, il cherche la tâche à éxécuter par défaut. N'ayant pas encore défini de tâche, je ne peux pas en définir une par défaut.
+
+Pour connaitre la liste des tâches connu de `rake`, il faut ajouter le `-T`. Dans le cas présent, la commande ne renvoi rien, ce qui reste logique. Créons notre première tâche.
+
+Première tâche RAKE
+-
+
+Dans le `Rakefile`, nous allons ecrire une tâche `hello` qui renvoie `Hello World`.
+
+```ruby
+# Rakefile
+
+task :hello do
+  puts 'HelloWorld'
+end
+```
+
+C'est relativement simple. Par contre, si vous tester le `rake -T`, le retour sera vide alors que le `rake hello` renvoi bien `Hello World`. Alors pourquoi si la tâche existe, elle n'apparait pas dans la liste des tâches. Et bien c'est pour vous forcer à faire les choses correctement. Pour que la tâche apparaisse, il faut la décrire an rajoutant le helper `desc` avant le `task`
+
+```ruby
+# Rakefile
+
+desc "print 'Hello World'"
+task :hello do
+  puts 'Hello World'
+end
+```
+
+```shell
+$ rake -T
+rake hello  # print 'Hello World'
+```
+
+Pour définir cette tâche par défaut, il faut ajouter la ligne : `task :default => :hello` dans le `Rakefile`. Je vous conseille de la mettre juste avant la définition de la première tâche.
+
+Premier test et tâche de test
+-
+
+Pour lancer les tests, nous allons modifier le fichier `Rakefile`.
+
+```ruby
+# Rakefile
+require 'rake/testtask'
+
+task :default => :hello
+
+desc "print 'Hello World'"
+task :hello do
+  puts 'HelloWorld'
+end
+
+Rake::TestTask.new do |t|
+  t.pattern = "spec/*_spec.rb"
+end
+```
+
+La librairie chargé permet de définir des tâches de type test. Ensuite, dans la définition de la tâche, on précise le pattern des fichiers test. Ici, ce sera tous les fichiers qui se trouve dans le repertoire `spec` et qui termine par `_spec.rb`
+
+Allons créer notre premier fichier de test pour tester l'`ApplicationController`.
+
+Nous avons d'abords besoin de charger l'`ApplicationController`.
+```ruby
+require File.expand_path '../../controllers/application_controller.rb', __FILE__
+```
+
+Ensuite, nous allons préciser quel est notre environnement d'execution et les libraires dont nous allons nous servir.
+```ruby
+ENV['RACK_ENV'] = 'test'
+require 'minitest/autorun'
+require 'rack/test'
+```
+
+Afin d'avoir accès au helper de test, nous allons les inclures.
+```ruby
+include Rack::Test::Methods
+```
+
+La librairie de test à besoin de définir quelle application sera lancé. ici `ApplicationController`
+```ruby
+def app
+  ApplicationController
+end
+```
+
+Et enfin, nous pouvons écrire notre test.
+```ruby
+describe "call a missing route" do
+  it "should return a message about routes missing" do
+    get '/'
+    last_response.body.must_include "Cette route n'existe pas"
+  end
+end
+```
+
+Vous pouvez définir autant de `describe` que vous voulez. Chacun d'entre eux pouvant posséder autant de `it` que vous voulez.
+
+Modifions le test pour qu'il ne soit pas passant, en supprimant le mot 'route' du message par exemple.
+
+```shell
+$ rake test
+(in /home/jade/Workspace/ms6r/api/auth)
+Run options: --seed 48858
+
+# Running:
+
+F
+
+Finished in 0.018793s, 53.2100 runs/s, 106.4201 assertions/s.
+
+  1) Failure:
+call a missing route#test_0001_should return a message about routes missing [/home/jade/Workspace/ms6r/api/auth/spec/ApplicationController_spec.rb:16]:
+Expected "{\"response\":\"Cette route n'existe pas\"}" to include "Cette  n'existe pas".
+
+1 runs, 2 assertions, 1 failures, 0 errors, 0 skips
+```
+
+Voici à quoi ressemble une réponse de test non passant.
+
+Je vous colle la réponse passante.
+
+```shell
+$ rake test                                                               1 ↵
+(in /home/jade/Workspace/ms6r/api/auth)
+Run options: --seed 20999
+
+# Running:
+
+.
+
+Finished in 0.034844s, 28.6997 runs/s, 57.3994 assertions/s.
+
+1 runs, 2 assertions, 0 failures, 0 errors, 0 skips
+```

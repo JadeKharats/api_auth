@@ -6,3 +6,8 @@ gem 'puma'
 
 gem 'mongoid'
 gem 'bcrypt'
+
+group :test do
+  gem 'minitest'
+  gem 'cucumber'
+end
