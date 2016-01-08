@@ -1347,3 +1347,10 @@ Content-Length: 83
 ```
 
 YEAH! BABY YEAH!!
+
+Et si on parlait test!
+-
+
+Comme vous avez pu le lire jusque là, j'ai fait les tests avec curl. J'ai aussi sauvegardé un projet sous PostMan (ume extension chrome). C'est pas très propre tout ça. Et surtout difficile à transmettre. Je vais donc rajouter les tests dnas le projet après coup. A tous les fans de TDD et/ou BDD, "désolé".
+
+Si j'avais fait du TDD, j'aurais utiliser `minitest` et `cucumber` pour le BDD. C'est donc ces librairies que j'utiliserais pour les tests.
